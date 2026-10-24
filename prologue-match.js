@@ -5,8 +5,6 @@
   // The two rally players remain opponents.  Relay helpers are separate team
   // members, so neither side ever appears to join the other player's move.
   const helperPool = ['jersey', 'leesin', 'yunhwan', 'seohyun', 'kumho'];
-  // Alternate stroke portraits may finish loading after the rally has started.
-  const portraits = ['minhee', 'gambler'];
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const previewView = {tw:.25,persp:.18,base:.61,dh:.24,zh:.31};
   let background = null;
@@ -18,7 +16,6 @@
   const shot = n => special(n)?.base || (n === 0 ? 'serve' : n%6 === 4 ? 'smash' : n%3 === 2 ? 'back' : 'drive');
 
   window.drawPrologueMatch = (canvas, seconds) => {
-    if (!portraits.every(k => FACES[k]?.complete && FACES[k].naturalWidth)) return false;
     const g = canvas.getContext('2d'), d = Math.min(devicePixelRatio || 1, 2);
     const width=960,height=640;
     if(canvas.width!==width*d || canvas.height!==height*d){canvas.width=width*d;canvas.height=height*d;}
