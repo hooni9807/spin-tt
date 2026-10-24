@@ -60,9 +60,12 @@
         const target={x:feet.x+side*44*scale,y:feet.y-leg-30*scale};
         return person(st,feet.y-leg,target,side*.3,LOOKS[cast[i]],scale,'shake',i===0?BLACK:RED,side,stroke,since,prep,measure);
       }
-      athlete(1,seconds);
+      // During an ultimate the rally is held.  Rendering the ordinary two-player
+      // exchange beneath the relay scene made the helpers look like unrelated
+      // extra characters, so only the table remains until the final strike.
+      if(!active) athlete(1,seconds);
       drawTable();
-      athlete(0,seconds);
+      if(!active) athlete(0,seconds);
       const n=Math.max(0,Math.floor((seconds-serveAt+1e-9)/duration)),u=Math.max(0,Math.min(1,(seconds-swingAt(n))/duration));
       const a=athlete(n%2,swingAt(n),true,n),b=athlete((n+1)%2,swingAt(n+1),true,n+1);
       const near=n%2===0;
@@ -78,19 +81,19 @@
       const power=special(n),color=power?.rgb||'199,255,132';
       let p;
       if(seconds<serveAt){p={x:a.x,y:a.y-94*Math.sin(Math.PI*Math.max(0,seconds-.4)/(serveAt-.4))};}
-      else{
+      else if(!active){
         p=ballPoint(u);
         for(let j=7;j>0;j--){const q=ballPoint(Math.max(0,u-j*.018));g.beginPath();g.arc(q.x,q.y,(power?8:4)*(1-j/10),0,Math.PI*2);g.fillStyle=`rgba(${color},${(1-j/8)*(power?.8:.38)})`;g.fill();}
         if(u<.18){g.beginPath();g.arc(a.x,a.y,10+u*90,0,Math.PI*2);g.strokeStyle=`rgba(207,255,151,${1-u/.18})`;g.lineWidth=2;g.stroke();}
         const bouncePhase=n===0?.76:.72;
         if(Math.abs(u-bouncePhase)<.07){g.beginPath();g.ellipse(bounce.x,bounce.y,13,4,0,0,Math.PI*2);g.strokeStyle='#edffc4';g.lineWidth=2;g.stroke();}
       }
-      if(power){const halo=g.createRadialGradient(p.x,p.y,0,p.x,p.y,30);halo.addColorStop(0,`rgba(${color},.8)`);halo.addColorStop(1,`rgba(${color},0)`);g.fillStyle=halo;g.beginPath();g.arc(p.x,p.y,30,0,Math.PI*2);g.fill();}
+      if(power&&!active){const halo=g.createRadialGradient(p.x,p.y,0,p.x,p.y,30);halo.addColorStop(0,`rgba(${color},.8)`);halo.addColorStop(1,`rgba(${color},0)`);g.fillStyle=halo;g.beginPath();g.arc(p.x,p.y,30,0,Math.PI*2);g.fill();}
       if(active){
         const origin=athlete(effectHit%2,swingAt(effectHit),true,effectHit);
         const caster=cast[effectHit%2],helpers=[cast[(effectHit+1)%2],'jersey'];
-        // Render-only scene: the ball is held at the racket, helpers relay it,
-        // then the caster's final strike resumes the showcase rally.
+        // The featured prologue player is the striker: helpers hit first, then
+        // feed the same held ball to that player for the finishing motion.
         drawUltMatchPreview(effect,caster,age,helpers.slice(0,effect.tier>=4?2:1));
         ultFx=[{u:effect,x:origin.x,y:origin.y,t:swingAt(effectHit)}];ball=null;drawUltFx();
         if(!reduced.matches){
@@ -99,8 +102,8 @@
           g.restore();
         }
       }
-      g.shadowColor=power?`rgb(${color})`:'#e5ffd0';g.shadowBlur=14;g.beginPath();g.arc(p.x,p.y,5.8,0,Math.PI*2);g.fillStyle='#fffef3';g.fill();g.shadowBlur=0;
-      line({x:p.x-2,y:p.y-2},{x:p.x+2,y:p.y+2},'#9cb682',1.3);
+      if(!active){g.shadowColor=power?`rgb(${color})`:'#e5ffd0';g.shadowBlur=14;g.beginPath();g.arc(p.x,p.y,5.8,0,Math.PI*2);g.fillStyle='#fffef3';g.fill();g.shadowBlur=0;
+      line({x:p.x-2,y:p.y-2},{x:p.x+2,y:p.y+2},'#9cb682',1.3);}
       canvas.dataset.rally=String(seconds<serveAt?0:n+1);
       canvas.dataset.ultimate=active?effect.id:'';
       canvas.dataset.shot=active?`${LOOKS[cast[effectHit%2]].nick} · ${effect.name}`:seconds<serveAt?'SERVICE':shot(n).toUpperCase();
