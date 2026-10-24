@@ -496,21 +496,24 @@ function lockAribeomOnce(){prog.q??={};if(prog.q._aribeomUnlockV1)return false;p
 const aribeomLocked=lockAribeomOnce();
 if(newCharactersLocked||aribeomLocked)try{localStorage.setItem('spinlab.progress',JSON.stringify(prog));}catch{}
 prog.coins=Math.max(0,Math.floor(Number(prog.coins)||0));
-prog.racketEnhance=Math.min(100,Math.max(0,Math.floor(Number(prog.racketEnhance)||0)));
+const MAX_ENHANCE=25;
+prog.racketEnhance=Math.min(MAX_ENHANCE,Math.max(0,Math.floor(Number(prog.racketEnhance)||0)));
 const COIN_NAME='스핀코인',COIN_REWARD={easy:30,hard:55,extreme:85,ultra:120,uhard:165,uext:220};
-const enhanceLevel=()=>Math.min(100,Math.max(0,Math.floor(Number(prog.racketEnhance)||0)));
+const enhanceLevel=()=>Math.min(MAX_ENHANCE,Math.max(0,Math.floor(Number(prog.racketEnhance)||0)));
 const enhanceActive=()=>mode==='match'&&!rankOn&&!net;
 // Enhancement belongs only to the human player.  In AI matches it boosts the
 // player's shot and makes the opponent a little more likely to miss; it never
 // grants the AI its own racket-enhancement bonus (and stays off in rank/PvP).
-const enhanceSpeed=()=>1+(enhanceActive()?enhanceLevel():0)*.0025,enhanceSpin=()=>1+(enhanceActive()?enhanceLevel():0)*.0025,enhanceAiMiss=()=>(enhanceActive()?enhanceLevel():0)*.002;
+const enhanceSpeed=()=>1+(enhanceActive()?enhanceLevel():0)*.01,enhanceSpin=()=>1+(enhanceActive()?enhanceLevel():0)*.01,enhanceAiMiss=()=>(enhanceActive()?enhanceLevel():0)*.008;
 // The enhancement dialog is also opened from the menu, where no match is
 // active yet.  Show the owned level's full future bonus there, not the
 // currently-active in-match value (which is correctly zero outside AI games).
-const enhanceShownSpeed=()=>1+enhanceLevel()*.0025,enhanceShownSpin=()=>1+enhanceLevel()*.0025,enhanceShownAiMiss=()=>enhanceLevel()*.002;
+const enhanceShownSpeed=()=>1+enhanceLevel()*.01,enhanceShownSpin=()=>1+enhanceLevel()*.01,enhanceShownAiMiss=()=>enhanceLevel()*.008;
 // +1~+10 is an easy entry path; after that the price rises every five levels without becoming abrupt.
-const enhanceCost=()=>{const n=enhanceLevel()+1;return n<=10?3:5+Math.floor((n-11)/5)*2;};
-const enhanceRate=()=>{const n=enhanceLevel()+1;return n<=10?1:n<=30?.9:n<=60?.75:n<=80?.6:.45;};
+// Five short bands keep early upgrades welcoming while making the final glow
+// meaningful.  At +25 the old +100 maximum strength is reached.
+const enhanceCost=()=>{const n=enhanceLevel()+1;return n<=5?5:n<=10?10:n<=15?18:n<=20?28:42;};
+const enhanceRate=()=>{const n=enhanceLevel()+1;return n<=5?1:n<=10?.85:n<=15?.70:n<=20?.55:.40;};
 function gainCoins(n,why){n=Math.max(0,Math.round(n));if(!n)return;lastCoinGain=n;prog.coins+=n;saveProg();toast(`+${n} ${COIN_NAME} · ${why}`,2.3);}
 function matchCoinReward(){return mode==='match'?(COIN_REWARD[tierNow()]||COIN_REWARD.easy):mode==='boss'?180:0;}
 const lossCoinReward=()=>Math.max(1,Math.round(matchCoinReward()*.1));
@@ -558,7 +561,7 @@ const TITLES=[['rookie','신입 부원','처음 시작한 탁구인',()=>true],
 // v3.74: more titles in the styles players chase most in games - level milestones, grind counters (장인 / 학살자), honour titles for the
 // hardest content, streaks, collection, and a few joke titles.
 ['lv5','탁구공 줍는 사람','레벨 5',()=>progLevel()>=5],['lv20','동네 고수','레벨 20',()=>progLevel()>=20],['lv40','구장 에이스','레벨 40',()=>progLevel()>=40],['lv70','살아있는 전설','레벨 70',()=>progLevel()>=70],['lv100','탁구의 신','레벨 100',()=>progLevel()>=100],
-['enh10','강화 입문자','라켓 강화 +10',()=>enhanceLevel()>=10],['enh30','스핀 대장장이','라켓 강화 +30',()=>enhanceLevel()>=30],['enh50','강화의 도전자','라켓 강화 +50',()=>enhanceLevel()>=50],['enh70','파괴와 창조','라켓 강화 +70',()=>enhanceLevel()>=70],['enh100','백강 신화','라켓 강화 +100',()=>enhanceLevel()>=100],
+['enh5','강화 입문자','라켓 강화 +5',()=>enhanceLevel()>=5],['enh10','스핀 대장장이','라켓 강화 +10',()=>enhanceLevel()>=10],['enh15','강화의 도전자','라켓 강화 +15',()=>enhanceLevel()>=15],['enh20','파괴와 창조','라켓 강화 +20',()=>enhanceLevel()>=20],['enh25','백강 신화','라켓 강화 +25',()=>enhanceLevel()>=25],
 ['g10','열정 신입','경기 10판 완주',()=>(tS().games||0)>=10],['g100','출석왕','경기 100판 완주',()=>(tS().games||0)>=100],['g500','탁구장 지박령','경기 500판 완주',()=>(tS().games||0)>=500],['g1000','고인물','경기 1000판 완주',()=>(tS().games||0)>=1000],
 ['win10','첫 승의 기쁨','경기 승리 10번',()=>qTotal('win')>=10],['win30','승리 중독자','경기 승리 30번',()=>qTotal('win')>=30],['win300','천하무적','경기 승리 300번',()=>qTotal('win')>=300],['win1000','승리의 화신','경기 승리 1000번',()=>qTotal('win')>=1000],
 ['loss50','패배는 성공의 어머니','경기 패배 50번',()=>(tS().loss||0)>=50],['loss200','칠전팔기','경기 패배 200번',()=>(tS().loss||0)>=200],
@@ -1171,7 +1174,7 @@ prog.runeSets[ch]={...runeSet(ch),[n[0]]:full?0:rk+1};saveProg();renderRunes();}
 $('rn-badge').hidden=runePoints()-runeSpent()<=0;}
 async function loadProgress(){try{const db=await pvpRemote();if(!db)return;const [snap,walletSnap]=await Promise.all([rankFs.getDoc(rankFs.doc(db,'progress',rankUid)),rankFs.getDoc(rankFs.doc(db,'wallets',rankUid))]),d=snap.exists()?snap.data():null,wallet=walletSnap.exists()?walletSnap.data():null,needsEconomySync=!!d&&!wallet;
 // Migrate legacy balances from progress once; all later wallet updates live in wallets/{uid}.
-const coins=Number.isFinite(wallet?.coins)?Math.max(0,Math.floor(wallet.coins)):Number.isFinite(d?.coins)?Math.max(0,Math.floor(d.coins)):prog.coins,enhance=Number.isFinite(wallet?.racketEnhance)?Math.min(100,Math.max(0,Math.floor(wallet.racketEnhance))):Number.isFinite(d?.racketEnhance)?Math.min(100,Math.max(0,Math.floor(d.racketEnhance))):enhanceLevel();
+const coins=Number.isFinite(wallet?.coins)?Math.max(0,Math.floor(wallet.coins)):Number.isFinite(d?.coins)?Math.max(0,Math.floor(d.coins)):prog.coins,enhance=Number.isFinite(wallet?.racketEnhance)?Math.min(MAX_ENHANCE,Math.max(0,Math.floor(wallet.racketEnhance))):Number.isFinite(d?.racketEnhance)?Math.min(MAX_ENHANCE,Math.max(0,Math.floor(d.racketEnhance))):enhanceLevel();
 const localAribeomMarker=prog.q?._aribeomUnlockV1,localNewCharactersMarker=prog.q?._newCharacterUnlocksV1;
 if(d&&Number.isFinite(d.xp))prog={...prog,xp:d.xp,q:d.q||prog.q,runes:d.runes||prog.runes,runeSets:d.runeSets||prog.runeSets,coins,racketEnhance:enhance,unlocked:[...new Set([...START_CHARS,...prog.unlocked,...(Array.isArray(d.unlocked)?d.unlocked:[]).filter(k=>LOOKS[k])])]};
 if(localAribeomMarker||localNewCharactersMarker){prog.q??={};if(localAribeomMarker)prog.q._aribeomUnlockV1=1;if(localNewCharactersMarker)prog.q._newCharacterUnlocksV1=1;}
@@ -1498,7 +1501,7 @@ function racket(x,y,angle,type,face,scale=1,skin=null){
 const R=RACKETS[type],H=R.h,hw=R.hw,y0=H*.72,y1=y0+R.hl,red=face===RED;
 ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.scale(scale,scale);
 const enhance=typeof enhanceLevel==='function'?enhanceLevel():0;
-if(enhance>=10){const tier=enhance>=100?3:enhance>=70?2:enhance>=40?1:0,cols=[['124,92,255','70,220,255'],['50,170,255','90,245,255'],['255,170,38','255,242,154'],['255,70,180','120,235,255']],col=cols[tier],pulse=.72+.28*Math.sin(time*9),radius=R.w*(1.08+enhance/220);ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.2+.18*pulse;ctx.shadowColor=`rgb(${col[0]})`;ctx.shadowBlur=14+enhance*.13;ctx.strokeStyle=`rgb(${col[1]})`;ctx.lineWidth=2.2+enhance/80;ctx.beginPath();ctx.ellipse(0,-R.h*.08,radius,R.h*(1.05+enhance/360),0,0,Math.PI*2);ctx.stroke();const sparks=3+Math.floor(enhance/20);for(let i=0;i<sparks;i++){const a=time*(2.5+(i%3))+(i/sparks)*Math.PI*2,dist=radius*(.85+.18*Math.sin(time*5+i)),sx=Math.cos(a)*dist,sy=-R.h*.08+Math.sin(a)*R.h*(.82+enhance/400);ctx.fillStyle=i%2?`rgb(${col[0]})`:'#fff7c2';pSpark(sx,sy,1.6+enhance/55);ctx.fill();}ctx.restore();}
+if(enhance>=5){const tier=enhance>=25?3:enhance>=18?2:enhance>=10?1:0,cols=[['124,92,255','70,220,255'],['50,170,255','90,245,255'],['255,170,38','255,242,154'],['255,70,180','120,235,255']],col=cols[tier],pulse=.72+.28*Math.sin(time*9),radius=R.w*(1.08+enhance/55);ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.2+.18*pulse;ctx.shadowColor=`rgb(${col[0]})`;ctx.shadowBlur=14+enhance*.52;ctx.strokeStyle=`rgb(${col[1]})`;ctx.lineWidth=2.2+enhance/20;ctx.beginPath();ctx.ellipse(0,-R.h*.08,radius,R.h*(1.05+enhance/90),0,0,Math.PI*2);ctx.stroke();const sparks=3+Math.floor(enhance/5);for(let i=0;i<sparks;i++){const a=time*(2.5+(i%3))+(i/sparks)*Math.PI*2,dist=radius*(.85+.18*Math.sin(time*5+i)),sx=Math.cos(a)*dist,sy=-R.h*.08+Math.sin(a)*R.h*(.82+enhance/100);ctx.fillStyle=i%2?`rgb(${col[0]})`:'#fff7c2';pSpark(sx,sy,1.6+enhance/14);ctx.fill();}ctx.restore();}
 // blade wood + rubber (cut above the throat)
 const blade=bladePath(R);ctx.fillStyle=R.wood||'#e6cc98';ctx.fill(blade);
 ctx.save();ctx.clip(bladePath(R,1.2));const cut=H*(R.square?.66:.66);
@@ -2849,8 +2852,8 @@ if(now){if(!was)store.set('myGear',JSON.stringify({racket:racketType,blade:blade
 let g=null;try{g=JSON.parse(store.get('myGear'));}catch{}if(!g||!RACKETS[g.racket])return;
 if(BLADES[g.blade])bladeType=g.blade;if(RUBBERS[g.rubber])rubberType=g.rubber;store.set('blade',bladeType);store.set('rubber',rubberType);$('blade').value=bladeType;$('rubber').value=rubberType;setRacket(g.racket);toast(`내 장비로 돌아왔어요: ${RACKETS[g.racket].name}`+(g.racket==='shake'?` · ${BLADES[bladeType].name} + ${RUBBERS[rubberType].name}`:''),1.8);}
 function setRacket(type){if(!RACKETS[type])return;racketType=type;$('racket').value=type;$('racket-note').textContent=racketNote(type,bladeType,rubberType);$('special-name').textContent='✦ 장착 필살기';store.set('racket',type);$('gear').hidden=type!=='shake';}
-function renderEnhance(){const lv=enhanceLevel(),cap=lv>=100,rate=enhanceRate(),cost=enhanceCost();$('enhance-coin').textContent=`${COIN_NAME} ${prog.coins.toLocaleString()}`;$('enhance-level').textContent=`+${lv}`;$('enhance-rate').textContent=cap?'최대 강화 완료':`성공 확률 ${Math.round(rate*100)}%`;$('enhance-speed').textContent=`+${Math.round((enhanceShownSpeed()-1)*100)}%`;$('enhance-spin').textContent=`+${Math.round((enhanceShownSpin()-1)*100)}%`;$('enhance-miss').textContent=`+${Math.round(enhanceShownAiMiss()*100)}%`;$('enhance-cost').textContent=cap?'최대 단계입니다.':`다음 강화 비용 · ${cost.toLocaleString()} ${COIN_NAME}`;$('enhance-note').textContent=lv>=50?'AI전 적용 · +50 이상 강화는 실패하면 1단계 하락합니다.':'AI전 적용 · +1~+10은 100% 성공 · 이후에는 성공 확률이 낮아집니다. +50부터 실패하면 1단계 하락합니다.';$('enhance-try').disabled=cap||prog.coins<cost;$('enhance-try').textContent=cap?'강화 완료':prog.coins<cost?`${COIN_NAME} 부족`:`+${lv+1} 강화 시도`;}
-const openEnhance=()=>{renderEnhance();$('enhance').showModal();};$('enhance-open').onclick=openEnhance;$('enhance-home').onclick=openEnhance;$('enhance-close').onclick=()=>$('enhance').close();$('enhance-try').onclick=()=>{const lv=enhanceLevel(),cost=enhanceCost();if(lv>=100||prog.coins<cost)return;prog.coins-=cost;if(Math.random()<enhanceRate()){prog.racketEnhance=lv+1;saveProg();toast(`⚒️ 강화 성공! 라켓 +${lv+1} · 속도·회전 상승 · AI 실수 증가`,2.4);}else{if(lv>=50)prog.racketEnhance=lv-1;saveProg();toast(lv>=50?`강화 실패… 라켓이 +${lv-1}로 하락했습니다.`:'강화 실패… 단계는 유지됩니다.',2.1);}renderEnhance();};
+function renderEnhance(){const lv=enhanceLevel(),cap=lv>=MAX_ENHANCE,rate=enhanceRate(),cost=enhanceCost();$('enhance-coin').textContent=`${COIN_NAME} ${prog.coins.toLocaleString()}`;$('enhance-level').textContent=`+${lv} / +${MAX_ENHANCE}`;$('enhance-rate').textContent=cap?'최대 강화 완료':`성공 확률 ${Math.round(rate*100)}%`;$('enhance-speed').textContent=`+${Math.round((enhanceShownSpeed()-1)*100)}%`;$('enhance-spin').textContent=`+${Math.round((enhanceShownSpin()-1)*100)}%`;$('enhance-miss').textContent=`+${Math.round(enhanceShownAiMiss()*100)}%`;$('enhance-cost').textContent=cap?'최대 단계입니다.':`다음 강화 비용 · ${cost.toLocaleString()} ${COIN_NAME}`;$('enhance-note').textContent=lv>=20?'AI전 적용 · +21부터 실패하면 1단계 하락합니다.':'AI전 적용 · +1~+5는 100% 성공 · 이후 성공 확률이 낮아집니다.';$('enhance-try').disabled=cap||prog.coins<cost;$('enhance-try').textContent=cap?'강화 완료':prog.coins<cost?`${COIN_NAME} 부족`:`+${lv+1} 강화 시도`;}
+const openEnhance=()=>{renderEnhance();$('enhance').showModal();};$('enhance-open').onclick=openEnhance;$('enhance-home').onclick=openEnhance;$('enhance-close').onclick=()=>$('enhance').close();$('enhance-try').onclick=()=>{const lv=enhanceLevel(),cost=enhanceCost();if(lv>=MAX_ENHANCE||prog.coins<cost)return;prog.coins-=cost;if(Math.random()<enhanceRate()){prog.racketEnhance=lv+1;saveProg();toast(`⚒️ 강화 성공! 라켓 +${lv+1} · 속도·회전 상승 · AI 실수 증가`,2.4);}else{if(lv>=20)prog.racketEnhance=lv-1;saveProg();toast(lv>=20?`강화 실패… 라켓이 +${lv-1}로 하락했습니다.`:'강화 실패… 단계는 유지됩니다.',2.1);}renderEnhance();};
 
 function gearNote(blade,rubber){const B=BLADES[blade],U=RUBBERS[rubber],pc=v=>Math.round(v*100)+'%';return ` · 목판 ${B.name}(${B.note}) · 러버 ${U.name}(${U.note}) → 속도 ${pc(B.speed*U.speed)} · 회전 ${pc(B.spin*U.spin)} · 실수 확률 ${pc(Math.max(0,B.err+U.err))}`;}
 if(P.LEVELS[store.get('difficulty')])difficulty=store.get('difficulty');$('difficulty').value=difficulty;
