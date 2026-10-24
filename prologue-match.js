@@ -2,6 +2,9 @@
 (() => {
   const duration = .86, serveAt = 1.6;
   const cast = ['minhee', 'gambler'];
+  // The two rally players remain opponents.  Relay helpers are separate team
+  // members, so neither side ever appears to join the other player's move.
+  const helperPool = ['jersey', 'leesin', 'yunhwan', 'seohyun', 'kumho'];
   // Alternate stroke portraits may finish loading after the rally has started.
   const portraits = ['minhee', 'gambler'];
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
@@ -91,10 +94,10 @@
       if(power&&!active){const halo=g.createRadialGradient(p.x,p.y,0,p.x,p.y,30);halo.addColorStop(0,`rgba(${color},.8)`);halo.addColorStop(1,`rgba(${color},0)`);g.fillStyle=halo;g.beginPath();g.arc(p.x,p.y,30,0,Math.PI*2);g.fill();}
       if(active){
         const origin=athlete(effectHit%2,swingAt(effectHit),true,effectHit);
-        const casterIndex=effectHit%2,caster=cast[casterIndex],helpers=[cast[(casterIndex+1)%2],'jersey'],casterY=casterIndex===0?-.54:3.24,casterX=.27*Math.sin(seconds*1.35+casterIndex*2),casterFeet=project(casterX,casterY,-.76),casterScale=figScale(casterFeet),casterLeg=legPx(casterFeet),helperLayout=helpers.slice(0,effect.tier>=4?2:1).map((_,i)=>{const side=i?-1:1,feet=project(casterX+side*(1.2+i*.12),casterY+(i?-.18:.18),-.76),entry=project(casterX+side*2.2,casterY+(i?-.36:.36),-.76),leg=legPx(feet);return{x:feet.x,y:feet.y-leg,entryX:entry.x,entryY:entry.y-leg,scale:figScale(feet),leg};});
+        const casterIndex=effectHit%2,caster=cast[casterIndex],opponent=cast[(casterIndex+1)%2],helpers=helperPool.filter(k=>k!==caster&&k!==opponent).slice(effectHit%helperPool.length).concat(helperPool).filter((k,i,a)=>a.indexOf(k)===i).slice(0,effect.tier>=4?2:1),casterY=casterIndex===0?-.54:3.24,casterX=.27*Math.sin(seconds*1.35+casterIndex*2),casterFeet=project(casterX,casterY,-.76),casterScale=figScale(casterFeet),casterLeg=legPx(casterFeet),tableTarget=project(casterX,casterY+(casterIndex===0?.72:-.72),.15),helperLayout=helpers.map((_,i)=>{const side=i?-1:1,feet=project(casterX+side*(1.2+i*.12),casterY+(i?-.18:.18),-.76),entry=project(casterX+side*2.2,casterY+(i?-.36:.36),-.76),leg=legPx(feet);return{x:feet.x,y:feet.y-leg,entryX:entry.x,entryY:entry.y-leg,scale:figScale(feet),leg};});
         // The featured prologue player is the striker: helpers hit first, then
         // feed the same held ball to that player for the finishing motion.
-        drawUltMatchPreview(effect,caster,age,helpers.slice(0,effect.tier>=4?2:1),{x:casterFeet.x,hip:casterFeet.y-casterLeg,scale:casterScale,leg:casterLeg,target:{x:casterFeet.x+48*casterScale,y:casterFeet.y-casterLeg-82*casterScale},helpers:helperLayout});
+        drawUltMatchPreview(effect,caster,age,helpers,{x:casterFeet.x,hip:casterFeet.y-casterLeg,scale:casterScale,leg:casterLeg,target:{x:tableTarget.x,y:tableTarget.y-42*casterScale},helpers:helperLayout,lockCourtSide:true});
         ultFx=[{u:effect,x:origin.x,y:origin.y,t:swingAt(effectHit)}];ball=null;drawUltFx();
         if(!reduced.matches){
           g.save();g.setTransform(d,0,0,d,0,0);
