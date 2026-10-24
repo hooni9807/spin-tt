@@ -482,7 +482,7 @@ const characterAvailable=k=>!!LOOKS[k]&&!LOOKS[k].disabled&&k!=='ai';
 // ===== 레벨 · 캐릭터 해금: every account starts at Lv 1 with 휴고범 only. Wins give XP (AI전 50 · 1대1 80 · 보스전 100),
 // every 100 XP is a level, and each level lets you unlock one character out of 3 random locked ones (2 → pick of 2, 1 → given).
 // Stored on the device and in progress/{uid} (cloud wins when it has more XP).
-const XP={ai:50,pvp:80,boss:100},XP_LEVEL=100,START_CHARS=['jersey','pastor'],UNLOCKABLE=()=>[...document.querySelectorAll('#char-pick button')].map(b=>b.dataset.char).filter(k=>characterAvailable(k)&&!START_CHARS.includes(k));
+const XP={ai:50,pvp:80,boss:100},XP_LEVEL=100,START_CHARS=['jersey'],UNLOCKABLE=()=>[...document.querySelectorAll('#char-pick button')].map(b=>b.dataset.char).filter(k=>characterAvailable(k)&&!START_CHARS.includes(k));
 let prog=(()=>{try{const p=JSON.parse(localStorage.getItem('spinlab.progress'));if(p&&Array.isArray(p.unlocked))return p;}catch{}return {xp:0,unlocked:[...START_CHARS]};})();
 prog.unlocked=[...new Set([...START_CHARS,...prog.unlocked])];
 // The two newest player characters join the normal level-up roster.  The
@@ -491,10 +491,10 @@ prog.unlocked=[...new Set([...START_CHARS,...prog.unlocked])];
 const NEW_CHARACTER_UNLOCKS=['jongryeong','kumho'];
 function lockNewCharactersOnce(){prog.q??={};if(prog.q._newCharacterUnlocksV1)return false;prog.q._newCharacterUnlocksV1=1;const before=prog.unlocked.length;prog.unlocked=prog.unlocked.filter(k=>!NEW_CHARACTER_UNLOCKS.includes(k));return prog.unlocked.length!==before;}
 const newCharactersLocked=lockNewCharactersOnce();
-// 매혹범은 보스/고난도 캐릭터이므로 기존 계정도 한 번 해금 후보로 되돌린다.
-function lockAribeomOnce(){prog.q??={};if(prog.q._aribeomUnlockV1)return false;prog.q._aribeomUnlockV1=1;const before=prog.unlocked.length;prog.unlocked=prog.unlocked.filter(k=>k!=='aribeom');return prog.unlocked.length!==before;}
-const aribeomLocked=lockAribeomOnce();
-if(newCharactersLocked||aribeomLocked)try{localStorage.setItem('spinlab.progress',JSON.stringify(prog));}catch{}
+// Do not retroactively re-lock 매혹범.  Re-locking an already owned character
+// conflicted with cloud progress and repeatedly resurfaced the unlock notice.
+const aribeomLocked=false;
+if(newCharactersLocked)try{localStorage.setItem('spinlab.progress',JSON.stringify(prog));}catch{}
 prog.coins=Math.max(0,Math.floor(Number(prog.coins)||0));
 const MAX_ENHANCE=25;
 prog.racketEnhance=Math.min(MAX_ENHANCE,Math.max(0,Math.floor(Number(prog.racketEnhance)||0)));
@@ -2496,7 +2496,7 @@ ctx.font=`bold ${Math.max(11,Math.round(fz*.42))}px Arial`;ctx.lineWidth=4;ctx.s
 function rollCharm(look){if(!look?.charm)return null;const id=Date.now().toString(36)+Math.random().toString(36).slice(2);return Math.random()<.5?id:'fail-'+id;}
 let seenCharm=null,charmStart=0;
 function drawCharm(){if(!playing)return;const b=ball,eligible=b&&!b.held&&b.owner==='ai'&&(mode!=='trio'||b.rcv===0)&&(!net?.dbl||dblMine());
-if(eligible&&b.charmId&&b.charmId!==seenCharm){seenCharm=b.charmId;charmStart=performance.now();if(b.charmId.startsWith('fail-')&&Math.random()<.3)blindT=time;}
+if(eligible&&b.charmId&&b.charmId!==seenCharm){seenCharm=b.charmId;charmStart=performance.now();/* A boss's failed charm belongs on the boss side, never as a penalty on the player's screen. */if(!bossCharm()&&b.charmId.startsWith('fail-')&&Math.random()<.3)blindT=time;}
 const age=performance.now()-charmStart;if(!charmStart||age>1200)return;
 if(b.charmId?.startsWith('fail-'))return;
 const fade=Math.min(1,age/120,(1200-age)/350),pulse=1+Math.sin(age/90)*.05,size=Math.min(W,H)*.72*pulse;
@@ -2628,9 +2628,15 @@ for(const ty of[2.25,2.4,2.1,2.55,1.9]){const F=(ty-b.y)/s.vy;if(F<=0)continue;c
 return s;}
 // Ultimate power/curve is applied after the ordinary stroke plan. Guard it again so the boosted ball always lands in the opponent's court.
 function ultLandGuard(s,b){if(s.vy>0)return landGuard(s,b);if(s.vy>=0)return s;const flip=v=>({...v,x:-v.x,y:2.74-v.y,vx:-v.vx,vy:-v.vy,side:-(v.side||0)}),back=landGuard(flip(s),flip(b));return flip(back);}
-// A late two-touch return must not become a lob. If no low trajectory clears the net, it is a miss.
-function lowDualReturn(s,b){const g=6+s.spin*P.EQUIP.spin*.55;
-for(const k of [1,1.2,1.4,1.6,1.8,2,2.5,3]){const vy=s.vy*k,t=(2.25-b.y)/vy,tn=(1.37-b.y)/vy;if(t<=0||tn<=0)continue;const vz=(.5*g*t*t-b.z)/t,net=b.z+vz*tn-.5*g*tn*tn,peak=b.z+(vz>0?vz*vz/(2*g):0);if(net>=.2&&peak<=.65){const v=landGuard({...s,vx:s.vx*k,vy,vz},b),top=b.z+(v.vz>0?v.vz*v.vz/(2*g):0);if(top<=.65)return v;}}
+// A long two-touch return used to keep multiplying its original pace until a
+// very low arc happened to clear the net.  That made late deep balls, and in
+// particular 유리대포's ×1.8 shot, turn into artificial nets/overs. Re-plan a
+// legal table landing with a capped pace instead of treating a solvable return
+// as a miss.
+function lowDualReturn(s,b){const g=6+s.spin*P.EQUIP.spin*.55,base=Math.max(.1,Math.abs(s.vy||0)),speed=Math.min(4.8,Math.max(2.35,base));
+for(const target of [2.22,2.08,2.38,1.94,2.52])for(const k of [1,.9,.8]){const vy=speed*k,t=(target-b.y)/vy,tn=(1.37-b.y)/vy;if(t<=0||tn<=0)continue;const vz=(.5*g*t*t-b.z)/t,net=b.z+vz*tn-.5*g*tn*tn,peak=b.z+(vz>0?vz*vz/(2*g):0);if(net<.2||peak>.64)continue;const scale=vy/base,v=landGuard({...s,vx:s.vx*scale,vy,vz},b),top=b.z+(v.vz>0?v.vz*v.vz/(2*g):0);if(!v.miss&&top<=.65)return v;}
+// If even the calibrated low arcs cannot clear, keep the intended two-touch
+// rule and call it a net rather than launching a high, long error ball.
 return P.miss(s,b.y,b.z,'net');}
 function hit(tap){if(performance.now()<cdUntil||performance.now()<ultHoldUntil)return;
 if(mode==='doubles'&&ball&&!ball.held&&ball.owner==='ai'&&myTurn==='mate')return;   // partner's ball
