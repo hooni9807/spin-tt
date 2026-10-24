@@ -726,7 +726,7 @@ if(m.dm)s2={...s2,defMiss:(s2.defMiss||0)+m.dm};return s2;}
 const ULT_HOLD_MS=950,ULT_ACTION_SEC=.72,ULTIMATE_SCORE_MISS=.95,PLAYER_SPECIAL_CHARGE={perfect:15,normal:10};let ultHoldUntil=0,ultFx=[];
 function holdUltimate(ms=ULT_HOLD_MS){ultHoldUntil=Math.max(ultHoldUntil,performance.now()+ms);}
 function ultSceneDuration(u){return Math.ceil((ultFinalStart(u)+ULT_ACTION_SEC)*1000);}
-function fireUlt(u,x,y,ai=false){const now=performance.now()/1000,allies=!ai&&(u.tier||1)>=3?ultAllies(u).slice(0,(u.tier||1)>=4?2:1):[],show=ultMotion(),hold=ultSceneDuration(u);if(!ai&&show){ultFx.push({u,x,y,t:now});if(ultFx.length>3)ultFx.shift();}const st=ai?foe:me;st.ultMove=show?{u,t:now,x,y,allies}:null;if(!ai&&show){const look=LOOKS[charType]||{};ultCut={u,x,y,t:now,nick:look.nick||look.name||'나',face:faceImg(look),allies,hold};setShake();}else if(ai){st.swingType=u.base;st.swingT=time;}if(show)holdUltimate(hold);beep(1200);setTimeout(()=>beep(1500),90);}
+function fireUlt(u,x,y,ai=false){const now=performance.now()/1000,allies=!ai&&(u.tier||1)>=3?ultAllies(u).slice(0,(u.tier||1)>=4?2:1):[],show=ultMotion(),hold=ultSceneDuration(u);if(!ai&&show){ultFx.push({u,x,y,t:now});if(ultFx.length>3)ultFx.shift();}const st=ai?foe:me;st.ultMove=show?{u,t:now,x,y,allies,owner:ai?'ai':'you'}:null;if(!ai&&show){const look=LOOKS[charType]||{};ultCut={u,x,y,t:now,nick:look.nick||look.name||'나',face:faceImg(look),allies,hold};setShake();}else if(ai){st.swingType=u.base;st.swingT=time;}if(show)holdUltimate(hold);beep(1200);setTimeout(()=>beep(1500),90);}
 /* 필살 슛 연출(애니 스포츠 만화풍): 하얀 섬광 → 화면 어둡게 + 집중선 → 사선 컷인(내 캐릭터 얼굴 + 기술 이름) → 잠깐 슬로모션 · 화면 흔들림 */
 let ultCut=null;
 function drawUltCutin(f=ultCut,elapsed=null,preview=false){if(!f)return;let T=elapsed??(performance.now()/1000-f.t);if(!preview)T*=1.8/((f.hold||ULT_HOLD_MS)/1000);if(T>(preview?1.35:1.8)){if(elapsed===null)ultCut=null;return;}const u=f.u,c=u.rgb;ctx.save();
@@ -759,8 +759,9 @@ ctx.globalAlpha=fade*(.35+.06*tier);ctx.fillStyle=`rgb(${colors})`;ctx.font=`bol
 if(tier>=4){ctx.globalAlpha=fade*.65;ctx.strokeStyle=`rgb(${colors})`;ctx.lineWidth=2+tier*.4;for(let side of [-1,1]){ctx.beginPath();ctx.moveTo(W*.5,H*.88);ctx.lineTo(W*(.5+side*.07),H*.79);ctx.lineTo(W*(.5+side*.15),H*.86);ctx.lineTo(W*(.5+side*.25),H*.72);ctx.stroke();}}
 
 ctx.restore();}
-// Allies are strictly chosen from characters the player has unlocked; tier 3 calls one, tier 4 calls two.
-function ultAllies(u,ch=charType){const pool=prog.unlocked.filter(k=>k!==ch&&LOOKS[k]&&characterAvailable(k));if(!pool.length)return [];const n=[...(u.id||'')].reduce((v,c)=>v+c.charCodeAt(0),0)%pool.length;return pool.map((_,i)=>pool[(n+i)%pool.length]).slice(0,(u.tier||1)>=4?2:1);}
+// Allies are strictly chosen from unlocked teammates, never from the player currently
+// standing on the other side of the table (AI, online, doubles, or trio opponent).
+function ultAllies(u,ch=charType){const blocked=new Set([ch,aiChar,foe2Char,net?.opp?.ch]);const pool=prog.unlocked.filter(k=>!blocked.has(k)&&LOOKS[k]&&characterAvailable(k));if(!pool.length)return [];const n=[...(u.id||'')].reduce((v,c)=>v+c.charCodeAt(0),0)%pool.length;return pool.map((_,i)=>pool[(n+i)%pool.length]).slice(0,(u.tier||1)>=4?2:1);}
 function ultAnimal(u){return ['ice','water','wave'].includes(u.fx)?'penguin':['dark','flame','meteor','spiral','fist'].includes(u.fx)?'wolf':null;}
 // The cut-in is decorative: no table, ball, or character physics are changed.
 function ultSceneKind(u){if(['golem','hammer','tiger','drill','wall','meteor'].includes(u.id))return 'rock';if(['blade','bladerx','heaven','thunderc','blast','sunflare'].includes(u.id))return 'table';if(u.trig==='lob'||['dragon','hawk','phoenixc','rocket','galaxy'].includes(u.id))return 'flight';return 'energy';}
@@ -1598,7 +1599,7 @@ if(since<.33)return mix(C,F,ease((since-.05)/.28));       // follow-through
 return mix(F,R,P.clamp((since-.45)/.2,0,1));               // hold, then back to ready
 }
 // Original anime-sports finish poses: explosive release, then a quick recovery so the next return remains readable.
-function ultMotionPose(p,move,side,s){if(!move)return p;const t=performance.now()/1000-move.t-ultFinalStart(move.u);if(t<0||t>ULT_ACTION_SEC)return p;const k=ultFxKind(move.u),outK=P.clamp((t-(ULT_ACTION_SEC*.53))/(ULT_ACTION_SEC*.47),0,1),hold=1-outK;
+function ultMotionPose(p,move,side,s){if(!move||move.owner&&ball?.owner!==move.owner)return p;const t=performance.now()/1000-move.t-ultFinalStart(move.u);if(t<0||t>ULT_ACTION_SEC)return p;const k=ultFxKind(move.u),outK=P.clamp((t-(ULT_ACTION_SEC*.53))/(ULT_ACTION_SEC*.47),0,1),hold=1-outK;
 const set=(x,y,a,c,tw)=>{p.target={x:p.target.x+x*side*s*hold,y:p.target.y+y*s*hold};p.angle+=a*side*hold;p.crouch=Math.max(p.crouch,c*hold);p.twist+=(tw||0)*hold;};
 if(['meteor','flame','burst'].includes(k))set(42,-72,.95,.72,.55);       // jump-and-slam
 else if(['bolt','slash','arrow'].includes(k))set(58,-10,.35,.42,.75);     // ninja dash finish
@@ -1606,7 +1607,7 @@ else if(['mist','petal','feather','ice'].includes(k))set(28,30,-.3,.88,-.35);   
 else if(['spiral','ring','wave'].includes(k))set(34,-42,.72,.55,.62);     // body-turn release
 else set(38,-28,.48,.5,.38);                                               // counter / star / shard
 p.crouch=lerp(p.crouch,.24,outK);return p;}
-function ultBodyOffset(st,side,s){const m=st.ultMove;if(!m)return{x:0,y:0};const t=performance.now()/1000-m.t-ultFinalStart(m.u);if(t<0||t>ULT_ACTION_SEC)return{x:0,y:0};const k=ultFxKind(m.u),p=P.clamp(t/ULT_ACTION_SEC,0,1),release=P.clamp((p-.46)/.34,0,1),fade=1-release;
+function ultBodyOffset(st,side,s){const m=st.ultMove;if(!m||m.owner&&ball?.owner!==m.owner)return{x:0,y:0};const t=performance.now()/1000-m.t-ultFinalStart(m.u);if(t<0||t>ULT_ACTION_SEC)return{x:0,y:0};const k=ultFxKind(m.u),p=P.clamp(t/ULT_ACTION_SEC,0,1),release=P.clamp((p-.46)/.34,0,1),fade=1-release;
 if(['bolt','slash','arrow'].includes(k))return{x:-side*42*s*Math.sin(Math.PI*p)*fade,y:0}; // low ninja run into the strike
 if(['meteor','flame','burst'].includes(k))return{x:-side*16*s*Math.sin(Math.PI*p),y:-78*s*Math.sin(Math.PI*Math.min(1,p/.78))*fade};
 if(['ice','mist','petal','feather'].includes(k))return{x:-side*10*s*Math.sin(Math.PI*p),y:8*s*Math.sin(Math.PI*p)};
