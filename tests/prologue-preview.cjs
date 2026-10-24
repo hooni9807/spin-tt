@@ -17,8 +17,8 @@ const http=require('http'),fs=require('fs'),path=require('path'),assert=require(
   const browser=await chromium.launch({executablePath:process.env.CHROME_PATH,headless:true});
   const errors=[];
   try{
-    for(const viewport of [{width:1440,height:960},{width:390,height:844}]){
-      const page=await browser.newPage({viewport});
+    for(const options of [{viewport:{width:1440,height:960}},{viewport:{width:390,height:844}},{viewport:{width:390,height:844},reducedMotion:'reduce'}]){
+      const page=await browser.newPage(options);
       page.on('pageerror',error=>errors.push(error.message));
       await page.route('**/*',route=>route.request().url().startsWith(origin)?route.continue():route.abort());
       await page.goto(origin);
@@ -31,6 +31,7 @@ const http=require('http'),fs=require('fs'),path=require('path'),assert=require(
       });
       assert.deepEqual(result.effects,['radiant','phoenix']);
       assert.equal(result.unchanged,true);
+      if(options.reducedMotion){const before=Number(await page.locator('#prologue-court').getAttribute('data-rally'));await page.waitForTimeout(2800);const after=Number(await page.locator('#prologue-court').getAttribute('data-rally'));assert.ok(after>before,'reduced-motion prologue still advances the rally');}
       await page.close();
     }
     assert.deepEqual(errors,[]);

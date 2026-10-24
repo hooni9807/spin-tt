@@ -43,7 +43,9 @@
   }
 
   function tick(now) {
-    if (last && previewReady) elapsed += Math.min(now - last, 100);
+    // Reduced-motion users still get a playable rally; only its pace and the
+    // heavier cut-in/shake effects are reduced by the renderer.
+    if (last && previewReady) elapsed += Math.min(now - last, 100) * (reduced.matches ? .65 : 1);
     last = now;
     showScene(elapsed < starts[1] ? 0 : elapsed < starts[2] ? 1 : 2);
     dialog.style.setProperty('--prologue-progress', Math.min(1,elapsed / 12000));
@@ -55,19 +57,19 @@
     cancelAnimationFrame(frame);
     frame = 0;
     last = 0;
-    const stopped = paused || reduced.matches || document.hidden;
+    const stopped = paused || document.hidden;
     dialog.classList.toggle('pl-paused', stopped);
-    motion.disabled = reduced.matches;
-    motion.textContent = reduced.matches ? '동작 줄임 켜짐' : paused ? '▷ 움직임 재생' : 'Ⅱ 움직임 멈추기';
-    motion.setAttribute('aria-pressed', String(paused || reduced.matches));
+    motion.disabled = false;
+    motion.textContent = paused ? '▷ 움직임 재생' : reduced.matches ? 'Ⅱ 동작 줄임 · 재생 중' : 'Ⅱ 움직임 멈추기';
+    motion.setAttribute('aria-pressed', String(paused));
     if (dialog.open && !stopped) frame = requestAnimationFrame(tick);
   }
 
   function replay() {
-    elapsed = reduced.matches ? 12000 : 0;
+    elapsed = 0;
     paused = false;
     dialog.classList.remove('pl-running');
-    showScene(reduced.matches ? 2 : 0);
+    showScene(0);
     dialog.style.setProperty('--prologue-progress', elapsed / 12000);
     drawRally(elapsed);
     // Reset the CSS sequence together with the scene timeline.
@@ -108,10 +110,7 @@
     syncMotion();
   }));
   document.addEventListener('visibilitychange', syncMotion);
-  reduced.addEventListener('change', () => {
-    if (reduced.matches) { elapsed = 12000; showScene(2); dialog.style.setProperty('--prologue-progress', 1); drawRally(elapsed); }
-    syncMotion();
-  });
+  reduced.addEventListener('change', syncMotion);
   const boot = window.mysPrologueBoot;
   // A timed-out download must not open the intro over an already usable main page.
   if (boot?.autoOpen) openPrologue();
