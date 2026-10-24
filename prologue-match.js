@@ -60,12 +60,12 @@
         const target={x:feet.x+side*44*scale,y:feet.y-leg-30*scale};
         return person(st,feet.y-leg,target,side*.3,LOOKS[cast[i]],scale,'shake',i===0?BLACK:RED,side,stroke,since,prep,measure);
       }
-      // During an ultimate the rally is held.  Rendering the ordinary two-player
-      // exchange beneath the relay scene made the helpers look like unrelated
-      // extra characters, so only the table remains until the final strike.
-      if(!active) athlete(1,seconds);
+      // During an ultimate the rally is held.  Keep the opposing AI visible on
+      // its own end of the court, but replace only the caster with the relay.
+      const casterIndex=active?effectHit%2:-1;
+      if(!active||casterIndex!==1) athlete(1,seconds);
       drawTable();
-      if(!active) athlete(0,seconds);
+      if(!active||casterIndex!==0) athlete(0,seconds);
       const n=Math.max(0,Math.floor((seconds-serveAt+1e-9)/duration)),u=Math.max(0,Math.min(1,(seconds-swingAt(n))/duration));
       const a=athlete(n%2,swingAt(n),true,n),b=athlete((n+1)%2,swingAt(n+1),true,n+1);
       const near=n%2===0;
