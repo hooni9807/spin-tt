@@ -9,7 +9,9 @@
   let background = null;
   const mix = (a,b,t) => a+(b-a)*t;
   const swingAt = n => serveAt + n*duration;
-  const special = n => n>=0 ? ULT_BY[n%12===4?'meteor':n%12===9?'comet':''] : null;
+  // The opening now mirrors a real ultimate: allies relay the ball first and
+  // the featured player launches the final strike after the scene completes.
+  const special = n => n>=0 ? ULT_BY[n%12===4?'radiant':n%12===9?'phoenix':''] : null;
   const shot = n => special(n)?.base || (n === 0 ? 'serve' : n%6 === 4 ? 'smash' : n%3 === 2 ? 'back' : 'drive');
 
   window.drawPrologueMatch = (canvas, seconds) => {
@@ -25,7 +27,7 @@
       const cycle=Math.floor(hit/12)*12;
       const effectHit=[cycle+9,cycle+4,cycle-3].find(n=>n>=0&&n<=hit);
       const effect=effectHit==null?null:special(effectHit),age=effect?seconds-swingAt(effectHit):Infinity;
-      const active=effect&&age>=0&&age<1.35;
+      const active=effect&&age>=0&&age<ultFinalStart(effect)+ULT_ACTION_SEC;
       const yaw=-.62;
       Object.assign(YAW,{a:yaw,c:Math.cos(yaw),s:Math.sin(yaw),px:0,py:1.37});
       arenaCache=background;
@@ -86,7 +88,10 @@
       if(power){const halo=g.createRadialGradient(p.x,p.y,0,p.x,p.y,30);halo.addColorStop(0,`rgba(${color},.8)`);halo.addColorStop(1,`rgba(${color},0)`);g.fillStyle=halo;g.beginPath();g.arc(p.x,p.y,30,0,Math.PI*2);g.fill();}
       if(active){
         const origin=athlete(effectHit%2,swingAt(effectHit),true,effectHit);
-        // Render-only effects: no fireUlt(), audio, equipped-skill or match-state changes.
+        const caster=cast[effectHit%2],helpers=[cast[(effectHit+1)%2],'jersey'];
+        // Render-only scene: the ball is held at the racket, helpers relay it,
+        // then the caster's final strike resumes the showcase rally.
+        drawUltMatchPreview(effect,caster,age,helpers.slice(0,effect.tier>=4?2:1));
         ultFx=[{u:effect,x:origin.x,y:origin.y,t:swingAt(effectHit)}];ball=null;drawUltFx();
         if(!reduced.matches){
           g.save();g.setTransform(d,0,0,d,0,0);
